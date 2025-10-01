@@ -1,6 +1,8 @@
 {
     "name": "python-fastapi",
-    "image": "mcr.microsoft.com/devcontainers/python:3.13",
+    "dockerComposeFile": "compose.yaml",
+    "service": "api",
+    "workspaceFolder": "/workspace",
     "features": {
         "ghcr.io/devcontainers/features/github-cli": {},
         "./features/uv": {}
@@ -12,6 +14,8 @@
         }
     },
     "containerEnv": {
-        "UV_LINK_MODE": "copy"
-    }
+        "UV_LINK_MODE": "copy",
+        "DATABASE_URL": "postgresql://postgres:postgres@postgres:5432/appdb"
+    },
+    "forwardPorts": [8000, 5432]
 }

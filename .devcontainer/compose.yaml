@@ -1,0 +1,20 @@
+services:
+  api:
+    image: mcr.microsoft.com/devcontainers/python:3.13
+    volumes:
+      - ..:/workspace
+    command: sleep infinity
+    depends_on:
+      - postgres
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/appdb
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"

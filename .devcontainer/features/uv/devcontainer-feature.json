@@ -3,5 +3,5 @@
 	"version": "0.0.1",
 	"name": "uv",
 	"description": "Installs uv the Python package manager",
-	"installsAfter": ["node"]
+	"installsAfter": ["python"]
 }
