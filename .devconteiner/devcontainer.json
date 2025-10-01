@@ -1,0 +1,17 @@
+{
+    "name": "python-fastapi",
+    "image": "mcr.microsoft.com/devcontainers/python:3.13",
+    "features": {
+        "ghcr.io/devcontainers/features/github-cli": {},
+        "./features/uv": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+            ]
+        }
+    },
+    "containerEnv": {
+        "UV_LINK_MODE": "copy"
+    }
+}
