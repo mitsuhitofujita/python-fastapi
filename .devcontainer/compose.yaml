@@ -13,8 +13,8 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: app_local
-      POSTGRES_PASSWORD: app_local
-      POSTGRES_DB: app_local
+      - POSTGRES_USER=app_local
+      - POSTGRES_PASSWORD=app_local
+      - POSTGRES_DB=app_local
     ports:
       - "5432:5432"
