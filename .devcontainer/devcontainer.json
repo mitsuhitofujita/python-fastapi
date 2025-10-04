@@ -17,7 +17,7 @@
     },
     "containerEnv": {
         "UV_LINK_MODE": "copy",
-        "DATABASE_URL": "postgresql://postgres:postgres@postgres:5432/appdb"
+        "DATABASE_URL": "postgresql://app_local:app_local@postgres:5432/app_local"
     },
     "forwardPorts": [8000, 5432]
 }
