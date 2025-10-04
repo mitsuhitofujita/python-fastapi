@@ -1,10 +1,12 @@
 {
     "name": "python-fastapi",
     "dockerComposeFile": "compose.yaml",
-    "service": "api",
+    "service": "app",
     "workspaceFolder": "/workspace",
     "features": {
+        "ghcr.io/devcontainers/features/node": {},
         "ghcr.io/devcontainers/features/github-cli": {},
+        "./features/claude-code": {},
         "./features/uv": {}
     },
     "customizations": {
