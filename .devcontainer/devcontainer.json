@@ -12,12 +12,12 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "anthropic.claude-code"
             ]
         }
     },
     "containerEnv": {
-        "UV_LINK_MODE": "copy",
-        "DATABASE_URL": "postgresql://app_local:app_local@postgres:5432/app_local"
+        "UV_LINK_MODE": "copy"
     },
     "forwardPorts": [8000, 5432]
 }
