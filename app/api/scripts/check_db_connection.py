@@ -3,8 +3,10 @@
 
 import os
 import sys
-import psycopg2
 from urllib.parse import urlparse
+
+import psycopg2
+
 
 def check_database_connection():
     """Check if database connection is successful using DATABASE_URL."""
@@ -27,14 +29,14 @@ def check_database_connection():
             port=result.port,
             database=result.path[1:],  # Remove leading slash
             user=result.username,
-            password=result.password
+            password=result.password,
         )
 
         # Test connection with version query
         cursor = conn.cursor()
         cursor.execute("SELECT version();")
         version = cursor.fetchone()[0]
-        print(f"✅ Successfully connected to database!")
+        print("✅ Successfully connected to database!")
         print(f"📊 PostgreSQL version: {version}")
 
         # Test if we can list tables
@@ -55,9 +57,10 @@ def check_database_connection():
         return True
 
     except Exception as e:
-        print(f"❌ Failed to connect to database:")
-        print(f"   Error: {str(e)}")
+        print("❌ Failed to connect to database:")
+        print(f"   Error: {e!s}")
         return False
+
 
 if __name__ == "__main__":
     success = check_database_connection()

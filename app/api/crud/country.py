@@ -1,7 +1,6 @@
-from datetime import datetime
-from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from models.country import Country
 from models.event_log import EventLog
 from schemas.country import CountryCreate, CountryUpdate
@@ -9,14 +8,15 @@ from schemas.country import CountryCreate, CountryUpdate
 
 class RequestInfo:
     """リクエスト情報を保持するデータクラス"""
+
     def __init__(
         self,
         method: str,
         path: str,
-        body: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        user_id: Optional[str] = None,
-        status_code: Optional[int] = None
+        body: str | None = None,
+        ip_address: str | None = None,
+        user_id: str | None = None,
+        status_code: int | None = None,
     ):
         self.method = method
         self.path = path
@@ -27,9 +27,7 @@ class RequestInfo:
 
 
 async def create_country(
-    db: AsyncSession,
-    country_data: CountryCreate,
-    request_info: RequestInfo
+    db: AsyncSession, country_data: CountryCreate, request_info: RequestInfo
 ) -> Country:
     """
     国を作成し、イベントログを記録（Transactional Outboxパターン）
@@ -46,10 +44,7 @@ async def create_country(
         IntegrityError: 国コードが重複している場合
     """
     # 1. ビジネスデータの作成
-    country = Country(
-        name=country_data.name,
-        code=country_data.code
-    )
+    country = Country(name=country_data.name, code=country_data.code)
     db.add(country)
     await db.flush()  # IDを確定
 
@@ -64,7 +59,7 @@ async def create_country(
         user_id=request_info.user_id,
         ip_address=request_info.ip_address,
         status_code=request_info.status_code,
-        processing_status="completed"
+        processing_status="completed",
     )
     db.add(event_log)
     await db.commit()  # 両方まとめてコミット
@@ -73,7 +68,7 @@ async def create_country(
     return country
 
 
-async def get_country(db: AsyncSession, country_id: int) -> Optional[Country]:
+async def get_country(db: AsyncSession, country_id: int) -> Country | None:
     """
     国を取得
 
@@ -84,16 +79,12 @@ async def get_country(db: AsyncSession, country_id: int) -> Optional[Country]:
     Returns:
         国 (存在しない場合はNone)
     """
-    result = await db.execute(
-        select(Country).where(Country.id == country_id)
-    )
+    result = await db.execute(select(Country).where(Country.id == country_id))
     return result.scalar_one_or_none()
 
 
 async def get_countries(
-    db: AsyncSession,
-    skip: int = 0,
-    limit: int = 100
+    db: AsyncSession, skip: int = 0, limit: int = 100
 ) -> list[Country]:
     """
     国の一覧を取得（ページネーション対応）
@@ -106,9 +97,7 @@ async def get_countries(
     Returns:
         国のリスト
     """
-    result = await db.execute(
-        select(Country).offset(skip).limit(limit)
-    )
+    result = await db.execute(select(Country).offset(skip).limit(limit))
     return list(result.scalars().all())
 
 
@@ -116,8 +105,8 @@ async def update_country(
     db: AsyncSession,
     country_id: int,
     country_data: CountryUpdate,
-    request_info: RequestInfo
-) -> Optional[Country]:
+    request_info: RequestInfo,
+) -> Country | None:
     """
     国を更新し、イベントログを記録（Transactional Outboxパターン）
 
@@ -134,9 +123,7 @@ async def update_country(
         IntegrityError: 国コードが重複している場合
     """
     # 対象の国を取得
-    result = await db.execute(
-        select(Country).where(Country.id == country_id)
-    )
+    result = await db.execute(select(Country).where(Country.id == country_id))
     country = result.scalar_one_or_none()
 
     if country is None:
@@ -161,7 +148,7 @@ async def update_country(
         user_id=request_info.user_id,
         ip_address=request_info.ip_address,
         status_code=request_info.status_code,
-        processing_status="completed"
+        processing_status="completed",
     )
     db.add(event_log)
     await db.commit()  # 両方まとめてコミット
@@ -171,10 +158,8 @@ async def update_country(
 
 
 async def delete_country(
-    db: AsyncSession,
-    country_id: int,
-    request_info: RequestInfo
-) -> Optional[Country]:
+    db: AsyncSession, country_id: int, request_info: RequestInfo
+) -> Country | None:
     """
     国を削除し、イベントログを記録（Transactional Outboxパターン）
 
@@ -187,9 +172,7 @@ async def delete_country(
         削除された国 (存在しない場合はNone)
     """
     # 対象の国を取得
-    result = await db.execute(
-        select(Country).where(Country.id == country_id)
-    )
+    result = await db.execute(select(Country).where(Country.id == country_id))
     country = result.scalar_one_or_none()
 
     if country is None:
@@ -206,7 +189,7 @@ async def delete_country(
         user_id=request_info.user_id,
         ip_address=request_info.ip_address,
         status_code=request_info.status_code,
-        processing_status="completed"
+        processing_status="completed",
     )
     db.add(event_log)
 

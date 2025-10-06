@@ -1,24 +1,21 @@
 import json
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
-from schemas.country import CountryCreate, CountryUpdate, CountryResponse
 from crud.country import (
+    RequestInfo,
     create_country,
-    get_country,
-    get_countries,
-    update_country,
     delete_country,
-    RequestInfo
+    get_countries,
+    get_country,
+    update_country,
 )
+from database import get_db
+from schemas.country import CountryCreate, CountryResponse, CountryUpdate
 
-router = APIRouter(
-    prefix="/countries",
-    tags=["countries"]
-)
+router = APIRouter(prefix="/countries", tags=["countries"])
 
 
 def get_client_ip(request: Request) -> str:
@@ -36,12 +33,10 @@ def get_client_ip(request: Request) -> str:
     response_model=CountryResponse,
     status_code=status.HTTP_201_CREATED,
     summary="国を作成",
-    description="新しい国を作成し、イベントログを記録します"
+    description="新しい国を作成し、イベントログを記録します",
 )
 async def create_country_endpoint(
-    country: CountryCreate,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
+    country: CountryCreate, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """
     国を作成
@@ -54,7 +49,7 @@ async def create_country_endpoint(
         path=str(request.url.path),
         body=json.dumps(country.model_dump()),
         ip_address=get_client_ip(request),
-        status_code=201
+        status_code=201,
     )
 
     try:
@@ -63,7 +58,7 @@ async def create_country_endpoint(
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Country with code '{country.code}' already exists"
+            detail=f"Country with code '{country.code}' already exists",
         )
 
 
@@ -71,12 +66,9 @@ async def create_country_endpoint(
     "/{country_id}",
     response_model=CountryResponse,
     summary="国を取得",
-    description="指定されたIDの国を取得します"
+    description="指定されたIDの国を取得します",
 )
-async def read_country(
-    country_id: int,
-    db: AsyncSession = Depends(get_db)
-):
+async def read_country(country_id: int, db: AsyncSession = Depends(get_db)):
     """
     IDで国を取得
 
@@ -86,21 +78,19 @@ async def read_country(
     if country is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Country with id {country_id} not found"
+            detail=f"Country with id {country_id} not found",
         )
     return country
 
 
 @router.get(
     "/",
-    response_model=List[CountryResponse],
+    response_model=list[CountryResponse],
     summary="国の一覧を取得",
-    description="国の一覧を取得します（ページネーション対応）"
+    description="国の一覧を取得します（ページネーション対応）",
 )
 async def read_countries(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_db)
+    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)
 ):
     """
     国の一覧を取得
@@ -116,13 +106,13 @@ async def read_countries(
     "/{country_id}",
     response_model=CountryResponse,
     summary="国を更新",
-    description="指定されたIDの国を更新し、イベントログを記録します"
+    description="指定されたIDの国を更新し、イベントログを記録します",
 )
 async def update_country_endpoint(
     country_id: int,
     country: CountryUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     国を更新
@@ -136,7 +126,7 @@ async def update_country_endpoint(
         path=str(request.url.path),
         body=json.dumps(country.model_dump(exclude_unset=True)),
         ip_address=get_client_ip(request),
-        status_code=200
+        status_code=200,
     )
 
     try:
@@ -144,13 +134,13 @@ async def update_country_endpoint(
         if updated_country is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Country with id {country_id} not found"
+                detail=f"Country with id {country_id} not found",
             )
         return updated_country
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Country with code '{country.code}' already exists"
+            detail=f"Country with code '{country.code}' already exists",
         )
 
 
@@ -158,12 +148,10 @@ async def update_country_endpoint(
     "/{country_id}",
     response_model=CountryResponse,
     summary="国を削除",
-    description="指定されたIDの国を削除し、イベントログを記録します"
+    description="指定されたIDの国を削除し、イベントログを記録します",
 )
 async def delete_country_endpoint(
-    country_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
+    country_id: int, request: Request, db: AsyncSession = Depends(get_db)
 ):
     """
     国を削除
@@ -174,13 +162,13 @@ async def delete_country_endpoint(
         method=request.method,
         path=str(request.url.path),
         ip_address=get_client_ip(request),
-        status_code=200
+        status_code=200,
     )
 
     deleted_country = await delete_country(db, country_id, request_info)
     if deleted_country is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Country with id {country_id} not found"
+            detail=f"Country with id {country_id} not found",
         )
     return deleted_country

@@ -1,11 +1,10 @@
 import os
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # 環境変数からデータベースURLを取得
 DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@postgres:5432/app_local"
+    "DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/app_local"
 )
 
 # 同期URLを非同期URLに変換 (postgresql:// -> postgresql+asyncpg://)
@@ -16,7 +15,7 @@ if DATABASE_URL.startswith("postgresql://"):
 engine = create_async_engine(
     DATABASE_URL,
     echo=True,  # SQLログを出力 (開発時のみ)
-    future=True
+    future=True,
 )
 
 # 非同期セッションメーカーの作成
@@ -25,7 +24,7 @@ AsyncSessionLocal = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
     autocommit=False,
-    autoflush=False
+    autoflush=False,
 )
 
 

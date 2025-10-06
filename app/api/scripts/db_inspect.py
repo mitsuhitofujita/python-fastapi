@@ -2,12 +2,13 @@
 """Database inspection script for development."""
 
 import os
+
 from sqlalchemy import create_engine, inspect, text
 
 
 def main():
     """Inspect database schema and data."""
-    database_url = os.getenv('DATABASE_URL')
+    database_url = os.getenv("DATABASE_URL")
     if not database_url:
         print("Error: DATABASE_URL environment variable is not set")
         return
@@ -29,7 +30,7 @@ def main():
         # Show indexes
         indexes = inspector.get_indexes(table)
         if indexes:
-            print(f"  └─ Indexes:")
+            print("  └─ Indexes:")
             for idx in indexes:
                 print(f"     └─ {idx['name']}: {idx['column_names']}")
         print()
@@ -38,7 +39,7 @@ def main():
     print("=== Data Samples ===\n")
     with engine.connect() as conn:
         for table in tables:
-            if table == 'alembic_version':
+            if table == "alembic_version":
                 continue
 
             result = conn.execute(text(f"SELECT COUNT(*) FROM {table}"))
