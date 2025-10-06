@@ -46,7 +46,7 @@ def main():
             count = result.scalar()
             print(f"📊 {table}: {count} rows")
 
-            if count > 0:
+            if count is not None and count > 0:
                 result = conn.execute(text(f"SELECT * FROM {table} LIMIT 5"))
                 rows = result.fetchall()
                 for row in rows:

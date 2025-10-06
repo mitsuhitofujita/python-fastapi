@@ -131,9 +131,9 @@ async def update_country(
 
     # 1. ビジネスデータの更新
     if country_data.name is not None:
-        country.name = country_data.name
+        country.name = country_data.name  # type: ignore[assignment]
     if country_data.code is not None:
-        country.code = country_data.code
+        country.code = country_data.code  # type: ignore[assignment]
 
     await db.flush()  # 変更を確定
 

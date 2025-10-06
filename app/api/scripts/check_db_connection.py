@@ -35,9 +35,13 @@ def check_database_connection():
         # Test connection with version query
         cursor = conn.cursor()
         cursor.execute("SELECT version();")
-        version = cursor.fetchone()[0]
-        print("✅ Successfully connected to database!")
-        print(f"📊 PostgreSQL version: {version}")
+        version_row = cursor.fetchone()
+        if version_row:
+            version = version_row[0]
+            print("✅ Successfully connected to database!")
+            print(f"📊 PostgreSQL version: {version}")
+        else:
+            print("⚠️ Connected but could not retrieve version")
 
         # Test if we can list tables
         cursor.execute(
