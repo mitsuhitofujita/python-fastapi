@@ -30,7 +30,7 @@ async def create_country(
     db: AsyncSession, country_data: CountryCreate, request_info: RequestInfo
 ) -> Country:
     """
-    国を作成し、イベントログを記録（Transactional Outboxパターン）
+    国を作成し、イベントログを記録 (Transactional Outboxパターン)
 
     Args:
         db: データベースセッション
@@ -87,7 +87,7 @@ async def get_countries(
     db: AsyncSession, skip: int = 0, limit: int = 100
 ) -> list[Country]:
     """
-    国の一覧を取得（ページネーション対応）
+    国の一覧を取得 (ページネーション対応)
 
     Args:
         db: データベースセッション
@@ -108,7 +108,7 @@ async def update_country(
     request_info: RequestInfo,
 ) -> Country | None:
     """
-    国を更新し、イベントログを記録（Transactional Outboxパターン）
+    国を更新し、イベントログを記録 (Transactional Outboxパターン)
 
     Args:
         db: データベースセッション
@@ -161,7 +161,7 @@ async def delete_country(
     db: AsyncSession, country_id: int, request_info: RequestInfo
 ) -> Country | None:
     """
-    国を削除し、イベントログを記録（Transactional Outboxパターン）
+    国を削除し、イベントログを記録 (Transactional Outboxパターン)
 
     Args:
         db: データベースセッション
@@ -178,7 +178,7 @@ async def delete_country(
     if country is None:
         return None
 
-    # 1. イベントログの記録（削除前にIDを記録）
+    # 1. イベントログの記録 (削除前にIDを記録)
     event_log = EventLog(
         event_type="DELETE",
         entity_type="country",

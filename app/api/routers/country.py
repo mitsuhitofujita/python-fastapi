@@ -20,7 +20,7 @@ router = APIRouter(prefix="/countries", tags=["countries"])
 
 def get_client_ip(request: Request) -> str:
     """クライアントIPアドレスを取得"""
-    # X-Forwarded-For ヘッダーをチェック（プロキシ経由の場合）
+    # X-Forwarded-For ヘッダーをチェック (プロキシ経由の場合)
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -36,13 +36,15 @@ def get_client_ip(request: Request) -> str:
     description="新しい国を作成し、イベントログを記録します",
 )
 async def create_country_endpoint(
-    country: CountryCreate, request: Request, db: AsyncSession = Depends(get_db)
+    country: CountryCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
 ):
     """
     国を作成
 
-    - **name**: 国名（1-100文字）
-    - **code**: ISO 3166-1 alpha-2 国コード（2文字、自動的に大文字変換）
+    - **name**: 国名 (1-100文字)
+    - **code**: ISO 3166-1 alpha-2 国コード (2文字、自動的に大文字変換)
     """
     request_info = RequestInfo(
         method=request.method,
@@ -55,11 +57,11 @@ async def create_country_endpoint(
     try:
         created_country = await create_country(db, country, request_info)
         return created_country
-    except IntegrityError:
+    except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Country with code '{country.code}' already exists",
-        )
+        ) from e
 
 
 @router.get(
@@ -68,7 +70,10 @@ async def create_country_endpoint(
     summary="国を取得",
     description="指定されたIDの国を取得します",
 )
-async def read_country(country_id: int, db: AsyncSession = Depends(get_db)):
+async def read_country(
+    country_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
+):
     """
     IDで国を取得
 
@@ -87,16 +92,18 @@ async def read_country(country_id: int, db: AsyncSession = Depends(get_db)):
     "/",
     response_model=list[CountryResponse],
     summary="国の一覧を取得",
-    description="国の一覧を取得します（ページネーション対応）",
+    description="国の一覧を取得します (ページネーション対応)",
 )
 async def read_countries(
-    skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
 ):
     """
     国の一覧を取得
 
-    - **skip**: スキップする件数（デフォルト: 0）
-    - **limit**: 取得する最大件数（デフォルト: 100）
+    - **skip**: スキップする件数 (デフォルト: 0)
+    - **limit**: 取得する最大件数 (デフォルト: 100)
     """
     countries = await get_countries(db, skip=skip, limit=limit)
     return countries
@@ -112,14 +119,14 @@ async def update_country_endpoint(
     country_id: int,
     country: CountryUpdate,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
 ):
     """
     国を更新
 
     - **country_id**: 国のID
-    - **name**: 国名（オプション）
-    - **code**: ISO 3166-1 alpha-2 国コード（オプション、自動的に大文字変換）
+    - **name**: 国名 (オプション)
+    - **code**: ISO 3166-1 alpha-2 国コード (オプション、自動的に大文字変換)
     """
     request_info = RequestInfo(
         method=request.method,
@@ -137,11 +144,11 @@ async def update_country_endpoint(
                 detail=f"Country with id {country_id} not found",
             )
         return updated_country
-    except IntegrityError:
+    except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Country with code '{country.code}' already exists",
-        )
+        ) from e
 
 
 @router.delete(
@@ -151,7 +158,9 @@ async def update_country_endpoint(
     description="指定されたIDの国を削除し、イベントログを記録します",
 )
 async def delete_country_endpoint(
-    country_id: int, request: Request, db: AsyncSession = Depends(get_db)
+    country_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
 ):
     """
     国を削除
