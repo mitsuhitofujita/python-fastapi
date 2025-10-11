@@ -8,6 +8,7 @@ services:
       - postgres
     environment:
       - DATABASE_URL=postgresql://app_local:app_local@postgres:5432/app_local
+      - DATABASE_URL_TEST=postgresql://app_test:app_test@postgres:5432/app_test
 
   postgres:
     image: postgres:16-alpine
@@ -16,5 +17,7 @@ services:
       - POSTGRES_USER=app_local
       - POSTGRES_PASSWORD=app_local
       - POSTGRES_DB=app_local
+    volumes:
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
     ports:
       - "5432:5432"

@@ -21,7 +21,7 @@ async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
     """Create a test database engine for each test."""
     db_url = os.getenv(
         "DATABASE_URL_TEST",
-        "postgresql://app_local:app_local@postgres:5432/app_local_test",
+        "postgresql://app_test:app_test@postgres:5432/app_test",
     )
     # Convert to asyncpg URL
     if db_url.startswith("postgresql://"):
