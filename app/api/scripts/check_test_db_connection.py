@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Database connection check script."""
+"""Test database connection check script."""
 
 import os
 import sys
@@ -8,22 +8,22 @@ from urllib.parse import urlparse
 import psycopg2
 
 
-def check_database_connection():
-    """Check if database connection is successful using DATABASE_URL."""
-    database_url = os.getenv("DATABASE_URL")
+def check_test_database_connection():
+    """Check if test database connection is successful using DATABASE_URL_TEST."""
+    database_url = os.getenv("DATABASE_URL_TEST")
 
     if not database_url:
-        print("❌ ERROR: DATABASE_URL environment variable is not set")
+        print("❌ ERROR: DATABASE_URL_TEST environment variable is not set")
         return False
 
-    print(f"📌 DATABASE_URL: {database_url}")
-    print("🔄 Attempting to connect to database...")
+    print(f"📌 DATABASE_URL_TEST: {database_url}")
+    print("🔄 Attempting to connect to test database...")
 
     try:
-        # Parse DATABASE_URL
+        # Parse DATABASE_URL_TEST
         result = urlparse(database_url)
 
-        # Connect to database
+        # Connect to test database
         conn = psycopg2.connect(
             host=result.hostname,
             port=result.port,
@@ -38,7 +38,7 @@ def check_database_connection():
         version_row = cursor.fetchone()
         if version_row:
             version = version_row[0]
-            print("✅ Successfully connected to database!")
+            print("✅ Successfully connected to test database!")
             print(f"📊 PostgreSQL version: {version}")
         else:
             print("⚠️ Connected but could not retrieve version")
@@ -62,11 +62,11 @@ def check_database_connection():
         return True
 
     except Exception as e:
-        print("❌ Failed to connect to database:")
+        print("❌ Failed to connect to test database:")
         print(f"   Error: {e!s}")
         return False
 
 
 if __name__ == "__main__":
-    success = check_database_connection()
+    success = check_test_database_connection()
     sys.exit(0 if success else 1)

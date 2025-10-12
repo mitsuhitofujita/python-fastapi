@@ -13,9 +13,7 @@ from tests.factories.country import create_country_async
 class TestCountryAPI:
     """Test cases for Country API endpoints."""
 
-    async def test_create_country(
-        self, client: AsyncClient, db_session: AsyncSession
-    ):
+    async def test_create_country(self, client: AsyncClient, db_session: AsyncSession):
         """Test creating a new country."""
         # Arrange
         payload = {"name": "Japan", "code": "JP"}
