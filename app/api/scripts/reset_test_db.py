@@ -48,7 +48,7 @@ def drop_all_tables(database_url):
         tables = cursor.fetchall()
 
         if not tables:
-            print("   ℹ️  No tables to drop")
+            print("   No tables to drop")
         else:
             # Drop all tables with CASCADE
             for table in tables:
@@ -80,7 +80,9 @@ def run_migrations():
     try:
         # Set environment variable for Alembic
         env = os.environ.copy()
-        env["DATABASE_URL"] = env.get("DATABASE_URL_TEST")
+        database_url_test = env.get("DATABASE_URL_TEST")
+        if database_url_test:
+            env["DATABASE_URL"] = database_url_test
 
         # Run alembic upgrade head
         result = subprocess.run(
@@ -100,7 +102,7 @@ def run_migrations():
         return True
 
     except subprocess.CalledProcessError as e:
-        print(f"❌ Migration failed:")
+        print("❌ Migration failed:")
         print(f"   stdout: {e.stdout}")
         print(f"   stderr: {e.stderr}")
         return False

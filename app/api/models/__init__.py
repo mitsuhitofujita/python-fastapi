@@ -1,3 +1,5 @@
+from typing import Any, ClassVar
+
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -6,4 +8,5 @@ class Base(DeclarativeBase):
 
     All tables will be created in the 'main' schema by default.
     """
-    __table_args__ = {"schema": "main"}
+
+    __table_args__: ClassVar[dict[str, Any]] = {"schema": "main"}  # type: ignore[misc]

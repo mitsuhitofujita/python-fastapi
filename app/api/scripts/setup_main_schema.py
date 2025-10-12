@@ -23,7 +23,7 @@ def setup_schema(db_name, user, password):
 
         # Create main schema
         cursor.execute("CREATE SCHEMA IF NOT EXISTS main;")
-        print(f"   ✅ Created main schema")
+        print("   ✅ Created main schema")
 
         # Grant privileges to user
         cursor.execute(f"GRANT ALL ON SCHEMA main TO {user};")
