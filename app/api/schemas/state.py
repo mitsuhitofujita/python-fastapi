@@ -1,10 +1,12 @@
+"""State schema definitions."""
+
 import re
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class StateCreate(BaseModel):
-    """Schema for creating a state/province"""
+class StateCreateRequest(BaseModel):
+    """Schema for state/province creation request"""
 
     country_id: int = Field(..., description="Country ID")
     name: str = Field(..., min_length=1, max_length=100, description="State/province name")
@@ -36,38 +38,8 @@ class StateCreate(BaseModel):
     }
 
 
-class StateCreateNested(BaseModel):
-    """Schema for creating a state/province (nested endpoint)"""
-
-    name: str = Field(..., min_length=1, max_length=100, description="State/province name")
-    code: str = Field(
-        ..., min_length=1, max_length=10, description="ISO 3166-2 format code"
-    )
-
-    @field_validator("code")
-    @classmethod
-    def validate_code_format(cls, v: str) -> str:
-        """
-        Normalize code to uppercase and validate ISO 3166-2 format
-
-        ISO 3166-2 format: {country code}-{subdivision code}
-        Examples: JP-13 (Tokyo), US-CA (California)
-        """
-        v = v.upper()
-        # Check basic ISO 3166-2 pattern
-        if not re.match(r"^[A-Z]{2}-[A-Z0-9]{1,3}$", v):
-            raise ValueError(
-                "code must be in ISO 3166-2 format (e.g., 'JP-13', 'US-CA')"
-            )
-        return v
-
-    model_config = {
-        "json_schema_extra": {"examples": [{"name": "Tokyo", "code": "JP-13"}]}
-    }
-
-
-class StateUpdate(BaseModel):
-    """Schema for updating a state/province"""
+class StateUpdateRequest(BaseModel):
+    """Schema for state/province update request"""
 
     country_id: int | None = Field(None, description="Country ID")
     name: str | None = Field(
@@ -117,3 +89,9 @@ class StateResponse(BaseModel):
             "examples": [{"id": 1, "country_id": 1, "name": "Tokyo", "code": "JP-13"}]
         },
     }
+
+
+# Aliases for create/update responses (currently same as StateResponse)
+# These can be customized in the future if needed
+StateCreateResponse = StateResponse
+StateUpdateResponse = StateResponse

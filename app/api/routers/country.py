@@ -1,3 +1,5 @@
+"""Country API router."""
+
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -14,7 +16,14 @@ from crud.country import (
 )
 from crud.state import get_states
 from database import get_db
-from schemas.country import CountryCreate, CountryResponse, CountryUpdate
+from domain.exceptions import DuplicateCodeError
+from schemas.country import (
+    CountryCreateRequest,
+    CountryCreateResponse,
+    CountryResponse,
+    CountryUpdateRequest,
+    CountryUpdateResponse,
+)
 from schemas.state import StateResponse
 
 from .utils import get_client_ip
@@ -24,21 +33,21 @@ router = APIRouter(prefix="/countries", tags=["countries"])
 
 @router.post(
     "/",
-    response_model=CountryResponse,
+    response_model=CountryCreateResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="国を作成",
-    description="新しい国を作成し、イベントログを記録します",
+    summary="Create a country",
+    description="Create a new country and record event log",
 )
 async def create_country_endpoint(
-    country: CountryCreate,
+    country: CountryCreateRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
 ):
     """
-    国を作成
+    Create a country
 
-    - **name**: 国名 (1-100文字)
-    - **code**: ISO 3166-1 alpha-2 国コード (2文字、自動的に大文字変換)
+    - **name**: Country name (1-100 characters)
+    - **code**: ISO 3166-1 alpha-2 country code (2 characters, automatically converted to uppercase)
     """
     request_info = RequestInfo(
         method=request.method,
@@ -51,27 +60,33 @@ async def create_country_endpoint(
     try:
         created_country = await create_country(db, country, request_info)
         return created_country
-    except IntegrityError as e:
+    except DuplicateCodeError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Country with code '{country.code}' already exists",
+            status_code=status.HTTP_409_CONFLICT,
+            detail=e.message,
+        ) from e
+    except IntegrityError as e:
+        # Unexpected database error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred",
         ) from e
 
 
 @router.get(
     "/{country_id}",
     response_model=CountryResponse,
-    summary="国を取得",
-    description="指定されたIDの国を取得します",
+    summary="Get a country",
+    description="Get a country by its ID",
 )
 async def read_country(
     country_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
 ):
     """
-    IDで国を取得
+    Get a country by ID
 
-    - **country_id**: 国のID
+    - **country_id**: Country ID
     """
     country = await get_country(db, country_id)
     if country is None:
@@ -85,19 +100,19 @@ async def read_country(
 @router.get(
     "/",
     response_model=list[CountryResponse],
-    summary="国の一覧を取得",
-    description="国の一覧を取得します (ページネーション対応)",
+    summary="Get list of countries",
+    description="Get list of countries (with pagination support)",
 )
 async def read_countries(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
 ):
     """
-    国の一覧を取得
+    Get list of countries
 
-    - **skip**: スキップする件数 (デフォルト: 0)
-    - **limit**: 取得する最大件数 (デフォルト: 100)
+    - **skip**: Number of records to skip (default: 0)
+    - **limit**: Maximum number of records to retrieve (default: 100)
     """
     countries = await get_countries(db, skip=skip, limit=limit)
     return countries
@@ -105,22 +120,22 @@ async def read_countries(
 
 @router.put(
     "/{country_id}",
-    response_model=CountryResponse,
-    summary="国を更新",
-    description="指定されたIDの国を更新し、イベントログを記録します",
+    response_model=CountryUpdateResponse,
+    summary="Update a country",
+    description="Update a country by its ID and record event log",
 )
 async def update_country_endpoint(
     country_id: int,
-    country: CountryUpdate,
+    country: CountryUpdateRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
 ):
     """
-    国を更新
+    Update a country
 
-    - **country_id**: 国のID
-    - **name**: 国名 (オプション)
-    - **code**: ISO 3166-1 alpha-2 国コード (オプション、自動的に大文字変換)
+    - **country_id**: Country ID
+    - **name**: Country name (optional)
+    - **code**: ISO 3166-1 alpha-2 country code (optional, automatically converted to uppercase)
     """
     request_info = RequestInfo(
         method=request.method,
@@ -138,28 +153,34 @@ async def update_country_endpoint(
                 detail=f"Country with id {country_id} not found",
             )
         return updated_country
-    except IntegrityError as e:
+    except DuplicateCodeError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Country with code '{country.code}' already exists",
+            status_code=status.HTTP_409_CONFLICT,
+            detail=e.message,
+        ) from e
+    except IntegrityError as e:
+        # Unexpected database error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred",
         ) from e
 
 
 @router.delete(
     "/{country_id}",
     response_model=CountryResponse,
-    summary="国を削除",
-    description="指定されたIDの国を削除し、イベントログを記録します",
+    summary="Delete a country",
+    description="Delete a country by its ID and record event log",
 )
 async def delete_country_endpoint(
     country_id: int,
     request: Request,
-    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPIの依存性注入パターン
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
 ):
     """
-    国を削除
+    Delete a country
 
-    - **country_id**: 国のID
+    - **country_id**: Country ID
     """
     request_info = RequestInfo(
         method=request.method,

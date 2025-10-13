@@ -1,13 +1,17 @@
+"""Country CRUD operations."""
+
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from domain.validators import validate_country_code_unique
 from models.country import Country
 from models.event_log import EventLog
-from schemas.country import CountryCreate, CountryUpdate
+from schemas.country import CountryCreateRequest, CountryUpdateRequest
 
 
 class RequestInfo:
-    """リクエスト情報を保持するデータクラス"""
+    """Data class to hold request information"""
 
     def __init__(
         self,
@@ -27,57 +31,66 @@ class RequestInfo:
 
 
 async def create_country(
-    db: AsyncSession, country_data: CountryCreate, request_info: RequestInfo
+    db: AsyncSession, country_data: CountryCreateRequest, request_info: RequestInfo
 ) -> Country:
     """
-    国を作成し、イベントログを記録 (Transactional Outboxパターン)
+    Create a country and record an event log (Transactional Outbox pattern)
 
     Args:
-        db: データベースセッション
-        country_data: 国作成データ
-        request_info: リクエスト情報
+        db: Database session
+        country_data: Country creation data
+        request_info: Request information
 
     Returns:
-        作成された国
+        Created country
 
     Raises:
-        IntegrityError: 国コードが重複している場合
+        DuplicateCodeError: If country code already exists
+        IntegrityError: If an unexpected database error occurs
     """
-    # 1. ビジネスデータの作成
-    country = Country(name=country_data.name, code=country_data.code)
-    db.add(country)
-    await db.flush()  # IDを確定
+    # Domain validation: check code uniqueness
+    await validate_country_code_unique(db, country_data.code)
 
-    # 2. イベントログの記録
-    event_log = EventLog(
-        event_type="CREATE",
-        entity_type="country",
-        entity_id=country.id,
-        request_method=request_info.method,
-        request_path=request_info.path,
-        request_body=request_info.body,
-        user_id=request_info.user_id,
-        ip_address=request_info.ip_address,
-        status_code=request_info.status_code,
-        processing_status="completed",
-    )
-    db.add(event_log)
-    await db.commit()  # 両方まとめてコミット
+    try:
+        # 1. Create business data
+        country = Country(name=country_data.name, code=country_data.code)
+        db.add(country)
+        await db.flush()  # Confirm ID
 
-    await db.refresh(country)
-    return country
+        # 2. Record event log
+        event_log = EventLog(
+            event_type="CREATE",
+            entity_type="country",
+            entity_id=country.id,
+            request_method=request_info.method,
+            request_path=request_info.path,
+            request_body=request_info.body,
+            user_id=request_info.user_id,
+            ip_address=request_info.ip_address,
+            status_code=request_info.status_code,
+            processing_status="completed",
+        )
+        db.add(event_log)
+        await db.commit()  # Commit both together
+
+        await db.refresh(country)
+        return country
+    except IntegrityError:
+        await db.rollback()
+        # Re-raise as unexpected error (validation should have caught duplicates)
+        raise
 
 
 async def get_country(db: AsyncSession, country_id: int) -> Country | None:
     """
-    国を取得
+    Get a country
 
     Args:
-        db: データベースセッション
-        country_id: 国ID
+        db: Database session
+        country_id: Country ID
 
     Returns:
-        国 (存在しない場合はNone)
+        Country (None if not found)
     """
     result = await db.execute(select(Country).where(Country.id == country_id))
     return result.scalar_one_or_none()
@@ -87,15 +100,15 @@ async def get_countries(
     db: AsyncSession, skip: int = 0, limit: int = 100
 ) -> list[Country]:
     """
-    国の一覧を取得 (ページネーション対応)
+    Get list of countries (with pagination)
 
     Args:
-        db: データベースセッション
-        skip: スキップする件数
-        limit: 取得する最大件数
+        db: Database session
+        skip: Number of records to skip
+        limit: Maximum number of records to retrieve
 
     Returns:
-        国のリスト
+        List of countries
     """
     result = await db.execute(select(Country).offset(skip).limit(limit))
     return list(result.scalars().all())
@@ -104,81 +117,91 @@ async def get_countries(
 async def update_country(
     db: AsyncSession,
     country_id: int,
-    country_data: CountryUpdate,
+    country_data: CountryUpdateRequest,
     request_info: RequestInfo,
 ) -> Country | None:
     """
-    国を更新し、イベントログを記録 (Transactional Outboxパターン)
+    Update a country and record an event log (Transactional Outbox pattern)
 
     Args:
-        db: データベースセッション
-        country_id: 国ID
-        country_data: 国更新データ
-        request_info: リクエスト情報
+        db: Database session
+        country_id: Country ID
+        country_data: Country update data
+        request_info: Request information
 
     Returns:
-        更新された国 (存在しない場合はNone)
+        Updated country (None if not found)
 
     Raises:
-        IntegrityError: 国コードが重複している場合
+        DuplicateCodeError: If country code already exists
+        IntegrityError: If an unexpected database error occurs
     """
-    # 対象の国を取得
+    # Get target country
     result = await db.execute(select(Country).where(Country.id == country_id))
     country = result.scalar_one_or_none()
 
     if country is None:
         return None
 
-    # 1. ビジネスデータの更新
-    if country_data.name is not None:
-        country.name = country_data.name  # type: ignore[assignment]
-    if country_data.code is not None:
-        country.code = country_data.code  # type: ignore[assignment]
+    # Domain validation: check code uniqueness if code is being changed
+    if country_data.code is not None and country_data.code != country.code:
+        await validate_country_code_unique(db, country_data.code, exclude_id=country_id)
 
-    await db.flush()  # 変更を確定
+    try:
+        # 1. Update business data
+        if country_data.name is not None:
+            country.name = country_data.name  # type: ignore[assignment]
+        if country_data.code is not None:
+            country.code = country_data.code  # type: ignore[assignment]
 
-    # 2. イベントログの記録
-    event_log = EventLog(
-        event_type="UPDATE",
-        entity_type="country",
-        entity_id=country.id,
-        request_method=request_info.method,
-        request_path=request_info.path,
-        request_body=request_info.body,
-        user_id=request_info.user_id,
-        ip_address=request_info.ip_address,
-        status_code=request_info.status_code,
-        processing_status="completed",
-    )
-    db.add(event_log)
-    await db.commit()  # 両方まとめてコミット
+        await db.flush()  # Confirm changes
 
-    await db.refresh(country)
-    return country
+        # 2. Record event log
+        event_log = EventLog(
+            event_type="UPDATE",
+            entity_type="country",
+            entity_id=country.id,
+            request_method=request_info.method,
+            request_path=request_info.path,
+            request_body=request_info.body,
+            user_id=request_info.user_id,
+            ip_address=request_info.ip_address,
+            status_code=request_info.status_code,
+            processing_status="completed",
+        )
+        db.add(event_log)
+        await db.commit()  # Commit both together
+
+        await db.refresh(country)
+        return country
+    except IntegrityError:
+        await db.rollback()
+        # Re-raise as unexpected error (validation should have caught duplicates)
+        raise
 
 
 async def delete_country(
     db: AsyncSession, country_id: int, request_info: RequestInfo
 ) -> Country | None:
     """
-    国を削除し、イベントログを記録 (Transactional Outboxパターン)
+    Delete a country and record an event log (Transactional Outbox pattern)
 
     Args:
-        db: データベースセッション
-        country_id: 国ID
-        request_info: リクエスト情報
+        db: Database session
+        country_id: Country ID
+        request_info: Request information
 
     Returns:
-        削除された国 (存在しない場合はNone)
+        Deleted country (None if not found)
     """
-    # 対象の国を取得
+    # Get target country
     result = await db.execute(select(Country).where(Country.id == country_id))
     country = result.scalar_one_or_none()
 
     if country is None:
         return None
 
-    # 1. イベントログの記録 (削除前にIDを記録)
+    # 1. Record event log (before deletion to record ID)
     event_log = EventLog(
         event_type="DELETE",
         entity_type="country",
@@ -193,8 +216,8 @@ async def delete_country(
     )
     db.add(event_log)
 
-    # 2. ビジネスデータの削除
+    # 2. Delete business data
     await db.delete(country)
-    await db.commit()  # 両方まとめてコミット
+    await db.commit()  # Commit both together
 
     return country

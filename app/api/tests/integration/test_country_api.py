@@ -208,4 +208,5 @@ class TestCountryAPI:
         response = await client.post("/countries/", json=payload)
 
         # Assert
-        assert response.status_code == 400  # Database integrity error
+        assert response.status_code == 409  # Conflict - duplicate code
+        assert "already exists" in response.json()["detail"].lower()

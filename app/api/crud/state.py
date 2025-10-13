@@ -1,14 +1,21 @@
+"""State CRUD operations."""
+
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.country import RequestInfo
+from domain.validators import (
+    validate_country_exists,
+    validate_state_code_unique,
+)
 from models.event_log import EventLog
 from models.state import State
-from schemas.state import StateCreate, StateUpdate
+from schemas.state import StateCreateRequest, StateUpdateRequest
 
 
 async def create_state(
-    db: AsyncSession, state_data: StateCreate, request_info: RequestInfo
+    db: AsyncSession, state_data: StateCreateRequest, request_info: RequestInfo
 ) -> State:
     """
     Create a state/province and record event log (Transactional Outbox pattern)
@@ -22,35 +29,46 @@ async def create_state(
         Created state
 
     Raises:
-        IntegrityError: If code is duplicated or country_id doesn't exist
+        EntityNotFoundError: If country doesn't exist
+        DuplicateCodeError: If code already exists
+        IntegrityError: If an unexpected database error occurs
     """
-    # 1. Create business data
-    state = State(
-        country_id=state_data.country_id,
-        name=state_data.name,
-        code=state_data.code,
-    )
-    db.add(state)
-    await db.flush()  # Commit ID
+    # Domain validation: check country exists and code is unique
+    await validate_country_exists(db, state_data.country_id)
+    await validate_state_code_unique(db, state_data.code)
 
-    # 2. Record event log
-    event_log = EventLog(
-        event_type="CREATE",
-        entity_type="state",
-        entity_id=state.id,
-        request_method=request_info.method,
-        request_path=request_info.path,
-        request_body=request_info.body,
-        user_id=request_info.user_id,
-        ip_address=request_info.ip_address,
-        status_code=request_info.status_code,
-        processing_status="completed",
-    )
-    db.add(event_log)
-    await db.commit()  # Commit both together
+    try:
+        # 1. Create business data
+        state = State(
+            country_id=state_data.country_id,
+            name=state_data.name,
+            code=state_data.code,
+        )
+        db.add(state)
+        await db.flush()  # Commit ID
 
-    await db.refresh(state)
-    return state
+        # 2. Record event log
+        event_log = EventLog(
+            event_type="CREATE",
+            entity_type="state",
+            entity_id=state.id,
+            request_method=request_info.method,
+            request_path=request_info.path,
+            request_body=request_info.body,
+            user_id=request_info.user_id,
+            ip_address=request_info.ip_address,
+            status_code=request_info.status_code,
+            processing_status="completed",
+        )
+        db.add(event_log)
+        await db.commit()  # Commit both together
+
+        await db.refresh(state)
+        return state
+    except IntegrityError:
+        await db.rollback()
+        # Re-raise as unexpected error (validation should have caught issues)
+        raise
 
 
 async def get_state(db: AsyncSession, state_id: int) -> State | None:
@@ -95,7 +113,7 @@ async def get_states(
 async def update_state(
     db: AsyncSession,
     state_id: int,
-    state_data: StateUpdate,
+    state_data: StateUpdateRequest,
     request_info: RequestInfo,
 ) -> State | None:
     """
@@ -111,7 +129,9 @@ async def update_state(
         Updated state (None if not found)
 
     Raises:
-        IntegrityError: If code is duplicated or country_id doesn't exist
+        EntityNotFoundError: If country doesn't exist
+        DuplicateCodeError: If code already exists
+        IntegrityError: If an unexpected database error occurs
     """
     # Get target state
     result = await db.execute(select(State).where(State.id == state_id))
@@ -120,34 +140,47 @@ async def update_state(
     if state is None:
         return None
 
-    # 1. Update business data
-    if state_data.country_id is not None:
-        state.country_id = state_data.country_id  # type: ignore[assignment]
-    if state_data.name is not None:
-        state.name = state_data.name  # type: ignore[assignment]
-    if state_data.code is not None:
-        state.code = state_data.code  # type: ignore[assignment]
+    # Domain validation: check country exists if being changed
+    if state_data.country_id is not None and state_data.country_id != state.country_id:
+        await validate_country_exists(db, state_data.country_id)
 
-    await db.flush()  # Commit changes
+    # Domain validation: check code uniqueness if being changed
+    if state_data.code is not None and state_data.code != state.code:
+        await validate_state_code_unique(db, state_data.code, exclude_id=state_id)
 
-    # 2. Record event log
-    event_log = EventLog(
-        event_type="UPDATE",
-        entity_type="state",
-        entity_id=state.id,
-        request_method=request_info.method,
-        request_path=request_info.path,
-        request_body=request_info.body,
-        user_id=request_info.user_id,
-        ip_address=request_info.ip_address,
-        status_code=request_info.status_code,
-        processing_status="completed",
-    )
-    db.add(event_log)
-    await db.commit()  # Commit both together
+    try:
+        # 1. Update business data
+        if state_data.country_id is not None:
+            state.country_id = state_data.country_id  # type: ignore[assignment]
+        if state_data.name is not None:
+            state.name = state_data.name  # type: ignore[assignment]
+        if state_data.code is not None:
+            state.code = state_data.code  # type: ignore[assignment]
 
-    await db.refresh(state)
-    return state
+        await db.flush()  # Commit changes
+
+        # 2. Record event log
+        event_log = EventLog(
+            event_type="UPDATE",
+            entity_type="state",
+            entity_id=state.id,
+            request_method=request_info.method,
+            request_path=request_info.path,
+            request_body=request_info.body,
+            user_id=request_info.user_id,
+            ip_address=request_info.ip_address,
+            status_code=request_info.status_code,
+            processing_status="completed",
+        )
+        db.add(event_log)
+        await db.commit()  # Commit both together
+
+        await db.refresh(state)
+        return state
+    except IntegrityError:
+        await db.rollback()
+        # Re-raise as unexpected error (validation should have caught issues)
+        raise
 
 
 async def delete_state(

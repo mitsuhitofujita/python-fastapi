@@ -1,3 +1,5 @@
+"""State API router."""
+
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -7,7 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from crud.country import RequestInfo
 from crud.state import create_state, delete_state, get_state, get_states, update_state
 from database import get_db
-from schemas.state import StateCreate, StateResponse, StateUpdate
+from domain.exceptions import DuplicateCodeError, EntityNotFoundError
+from schemas.state import (
+    StateCreateRequest,
+    StateCreateResponse,
+    StateResponse,
+    StateUpdateRequest,
+    StateUpdateResponse,
+)
 
 from .utils import get_client_ip
 
@@ -16,13 +25,13 @@ router = APIRouter(prefix="/states", tags=["states"])
 
 @router.post(
     "/",
-    response_model=StateResponse,
+    response_model=StateCreateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a state/province",
     description="Create a new state/province and record event log",
 )
 async def create_state_endpoint(
-    state: StateCreate,
+    state: StateCreateRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
 ):
@@ -44,16 +53,21 @@ async def create_state_endpoint(
     try:
         created_state = await create_state(db, state, request_info)
         return created_state
-    except IntegrityError as e:
-        error_msg = str(e.orig) if hasattr(e, "orig") else str(e)
-        if "foreign key" in error_msg.lower():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Country with id {state.country_id} does not exist",
-            ) from e
+    except EntityNotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"State with code '{state.code}' already exists",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        ) from e
+    except DuplicateCodeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=e.message,
+        ) from e
+    except IntegrityError as e:
+        # Unexpected database error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred",
         ) from e
 
 
@@ -106,13 +120,13 @@ async def read_states(
 
 @router.put(
     "/{state_id}",
-    response_model=StateResponse,
+    response_model=StateUpdateResponse,
     summary="Update a state/province",
     description="Update a state/province by ID and record event log",
 )
 async def update_state_endpoint(
     state_id: int,
-    state: StateUpdate,
+    state: StateUpdateRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
 ):
@@ -140,16 +154,21 @@ async def update_state_endpoint(
                 detail=f"State with id {state_id} not found",
             )
         return updated_state
-    except IntegrityError as e:
-        error_msg = str(e.orig) if hasattr(e, "orig") else str(e)
-        if "foreign key" in error_msg.lower():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Country with id {state.country_id} does not exist",
-            ) from e
+    except EntityNotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"State with code '{state.code}' already exists",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message,
+        ) from e
+    except DuplicateCodeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=e.message,
+        ) from e
+    except IntegrityError as e:
+        # Unexpected database error
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred",
         ) from e
 
 
