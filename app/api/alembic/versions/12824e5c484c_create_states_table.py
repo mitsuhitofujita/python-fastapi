@@ -35,9 +35,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("code"),
         schema="main",
     )
-    op.create_index(
-        "idx_states_country_id", "states", ["country_id"], schema="main"
-    )
+    op.create_index("idx_states_country_id", "states", ["country_id"], schema="main")
     # ### end Alembic commands ###
 
 

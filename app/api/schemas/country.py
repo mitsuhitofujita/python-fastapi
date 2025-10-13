@@ -25,7 +25,9 @@ class CountryCreateRequest(BaseModel):
 class CountryUpdateRequest(BaseModel):
     """Schema for country update request"""
 
-    name: str | None = Field(None, min_length=1, max_length=100, description="Country name")
+    name: str | None = Field(
+        None, min_length=1, max_length=100, description="Country name"
+    )
     code: str | None = Field(
         None, min_length=2, max_length=2, description="ISO 3166-1 alpha-2 country code"
     )

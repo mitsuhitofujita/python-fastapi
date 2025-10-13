@@ -55,7 +55,9 @@ def drop_all_tables(database_url):
                 schema_name = table[0]
                 table_name = table[1]
                 print(f"   Dropping table: {schema_name}.{table_name}")
-                cursor.execute(f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}" CASCADE;')
+                cursor.execute(
+                    f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}" CASCADE;'
+                )
 
             print(f"   ✅ Dropped {len(tables)} table(s)")
 

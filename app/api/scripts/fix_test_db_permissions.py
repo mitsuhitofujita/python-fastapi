@@ -50,8 +50,7 @@ def fix_test_db_permissions():
 
         # Set default privileges for future tables
         cursor.execute(
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-            "GRANT ALL ON TABLES TO app_test;"
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO app_test;"
         )
         print("   ✅ Set default table privileges")
 

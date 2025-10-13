@@ -9,7 +9,9 @@ class StateCreateRequest(BaseModel):
     """Schema for state/province creation request"""
 
     country_id: int = Field(..., description="Country ID")
-    name: str = Field(..., min_length=1, max_length=100, description="State/province name")
+    name: str = Field(
+        ..., min_length=1, max_length=100, description="State/province name"
+    )
     code: str = Field(
         ..., min_length=1, max_length=10, description="ISO 3166-2 format code"
     )
@@ -69,9 +71,7 @@ class StateUpdateRequest(BaseModel):
         return v
 
     model_config = {
-        "json_schema_extra": {
-            "examples": [{"name": "California", "code": "US-CA"}]
-        }
+        "json_schema_extra": {"examples": [{"name": "California", "code": "US-CA"}]}
     }
 
 

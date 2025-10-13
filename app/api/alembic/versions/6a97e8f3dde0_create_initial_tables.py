@@ -69,7 +69,9 @@ def upgrade() -> None:
         schema="main",
     )
     op.create_index(
-        "idx_event_logs_processing", "event_logs", ["processing_status", "created_at"],
+        "idx_event_logs_processing",
+        "event_logs",
+        ["processing_status", "created_at"],
         schema="main",
     )
     # ### end Alembic commands ###

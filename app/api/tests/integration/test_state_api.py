@@ -15,9 +15,7 @@ from tests.factories.state import create_state_async
 class TestStateAPI:
     """Test cases for State API endpoints."""
 
-    async def test_create_state(
-        self, client: AsyncClient, db_session: AsyncSession
-    ):
+    async def test_create_state(self, client: AsyncClient, db_session: AsyncSession):
         """Test creating a new state."""
         # Arrange
         country = await create_country_async(db_session, name="Japan", code="JP")
@@ -290,7 +288,9 @@ class TestStateAPI:
         # Assert
         assert response.status_code == 404
 
-    async def test_create_state_invalid_code(self, client: AsyncClient, db_session: AsyncSession):
+    async def test_create_state_invalid_code(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """Test creating a state with invalid ISO 3166-2 code."""
         # Arrange
         country = await create_country_async(db_session, name="Japan", code="JP")

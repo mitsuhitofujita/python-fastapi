@@ -20,7 +20,9 @@ class StateFactory(factory.alchemy.SQLAlchemyModelFactory):
     id = factory.Sequence(lambda n: n)
     country_id = factory.Sequence(lambda n: n)
     name = factory.LazyAttribute(lambda _: fake.city())
-    code = factory.LazyAttribute(lambda _: f"{fake.country_code()}-{fake.random_int(1, 99):02d}")
+    code = factory.LazyAttribute(
+        lambda _: f"{fake.country_code()}-{fake.random_int(1, 99):02d}"
+    )
 
 
 async def create_state_async(
