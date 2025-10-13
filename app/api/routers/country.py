@@ -12,22 +12,14 @@ from crud.country import (
     get_country,
     update_country,
 )
-from crud.state import create_state, get_states
+from crud.state import get_states
 from database import get_db
 from schemas.country import CountryCreate, CountryResponse, CountryUpdate
-from schemas.state import StateCreate, StateCreateNested, StateResponse
+from schemas.state import StateResponse
+
+from .utils import get_client_ip
 
 router = APIRouter(prefix="/countries", tags=["countries"])
-
-
-def get_client_ip(request: Request) -> str:
-    """クライアントIPアドレスを取得"""
-    # X-Forwarded-For ヘッダーをチェック (プロキシ経由の場合)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    # 直接接続の場合
-    return request.client.host if request.client else "unknown"
 
 
 @router.post(
@@ -188,58 +180,6 @@ async def delete_country_endpoint(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot delete country with existing states",
-        ) from e
-
-
-# Nested endpoints for states/provinces under countries
-@router.post(
-    "/{country_id}/states",
-    response_model=StateResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a state/province under a country",
-    description="Create a new state/province for a specific country and record event log",
-)
-async def create_country_state(
-    country_id: int,
-    state: StateCreateNested,
-    request: Request,
-    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
-):
-    """
-    Create a state/province for a specific country
-
-    - **country_id**: Country ID (from path parameter)
-    - **name**: State/province name (1-100 characters)
-    - **code**: ISO 3166-2 code (automatically converted to uppercase)
-    """
-    # Verify country exists
-    country = await get_country(db, country_id)
-    if country is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Country with id {country_id} not found",
-        )
-
-    # Create StateCreate with country_id from path parameter
-    state_data = StateCreate(
-        country_id=country_id, name=state.name, code=state.code
-    )
-
-    request_info = RequestInfo(
-        method=request.method,
-        path=str(request.url.path),
-        body=json.dumps(state.model_dump()),
-        ip_address=get_client_ip(request),
-        status_code=201,
-    )
-
-    try:
-        created_state = await create_state(db, state_data, request_info)
-        return created_state
-    except IntegrityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"State with code '{state.code}' already exists",
         ) from e
 
 

@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.country import Country
+from models.event_log import EventLog
 from tests.factories.country import create_country_async
 
 
@@ -34,6 +35,18 @@ class TestCountryAPI:
         assert len(countries) == 1
         assert countries[0].name == "Japan"
         assert countries[0].code == "JP"
+
+        # Verify event log
+        event_result = await db_session.execute(select(EventLog))
+        event_logs = event_result.scalars().all()
+        assert len(event_logs) == 1
+        assert event_logs[0].event_type == "CREATE"
+        assert event_logs[0].entity_type == "country"
+        assert event_logs[0].entity_id == data["id"]
+        assert event_logs[0].request_method == "POST"
+        assert event_logs[0].request_path == "/countries/"
+        assert event_logs[0].ip_address is not None
+        assert event_logs[0].processing_status == "completed"
 
     async def test_get_country(self, client: AsyncClient, db_session: AsyncSession):
         """Test retrieving a country by ID."""
@@ -115,6 +128,18 @@ class TestCountryAPI:
         await db_session.refresh(country)
         assert country.name == "Japan"
 
+        # Verify event log
+        event_result = await db_session.execute(select(EventLog))
+        event_logs = event_result.scalars().all()
+        assert len(event_logs) == 1
+        assert event_logs[0].event_type == "UPDATE"
+        assert event_logs[0].entity_type == "country"
+        assert event_logs[0].entity_id == country.id
+        assert event_logs[0].request_method == "PUT"
+        assert event_logs[0].request_path == f"/countries/{country.id}"
+        assert event_logs[0].ip_address is not None
+        assert event_logs[0].processing_status == "completed"
+
     async def test_update_country_not_found(self, client: AsyncClient):
         """Test updating a non-existent country."""
         # Act
@@ -141,6 +166,18 @@ class TestCountryAPI:
         result = await db_session.execute(select(Country))
         countries = result.scalars().all()
         assert len(countries) == 0
+
+        # Verify event log
+        event_result = await db_session.execute(select(EventLog))
+        event_logs = event_result.scalars().all()
+        assert len(event_logs) == 1
+        assert event_logs[0].event_type == "DELETE"
+        assert event_logs[0].entity_type == "country"
+        assert event_logs[0].entity_id == country.id
+        assert event_logs[0].request_method == "DELETE"
+        assert event_logs[0].request_path == f"/countries/{country.id}"
+        assert event_logs[0].ip_address is not None
+        assert event_logs[0].processing_status == "completed"
 
     async def test_delete_country_not_found(self, client: AsyncClient):
         """Test deleting a non-existent country."""

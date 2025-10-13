@@ -5,21 +5,56 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.country import RequestInfo
-from crud.state import delete_state, get_state, get_states, update_state
+from crud.state import create_state, delete_state, get_state, get_states, update_state
 from database import get_db
-from schemas.state import StateResponse, StateUpdate
+from schemas.state import StateCreate, StateResponse, StateUpdate
+
+from .utils import get_client_ip
 
 router = APIRouter(prefix="/states", tags=["states"])
 
 
-def get_client_ip(request: Request) -> str:
-    """Get client IP address"""
-    # Check X-Forwarded-For header (when behind proxy)
-    forwarded = request.headers.get("X-Forwarded-For")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    # Direct connection
-    return request.client.host if request.client else "unknown"
+@router.post(
+    "/",
+    response_model=StateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a state/province",
+    description="Create a new state/province and record event log",
+)
+async def create_state_endpoint(
+    state: StateCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
+):
+    """
+    Create a state/province
+
+    - **country_id**: Country ID
+    - **name**: State/province name (1-100 characters)
+    - **code**: ISO 3166-2 code (automatically converted to uppercase)
+    """
+    request_info = RequestInfo(
+        method=request.method,
+        path=str(request.url.path),
+        body=json.dumps(state.model_dump()),
+        ip_address=get_client_ip(request),
+        status_code=201,
+    )
+
+    try:
+        created_state = await create_state(db, state, request_info)
+        return created_state
+    except IntegrityError as e:
+        error_msg = str(e.orig) if hasattr(e, "orig") else str(e)
+        if "foreign key" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Country with id {state.country_id} does not exist",
+            ) from e
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"State with code '{state.code}' already exists",
+        ) from e
 
 
 @router.get(

@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from models.event_log import EventLog
 from models.state import State
 from tests.factories.country import create_country_async
 from tests.factories.state import create_state_async
@@ -14,16 +15,16 @@ from tests.factories.state import create_state_async
 class TestStateAPI:
     """Test cases for State API endpoints."""
 
-    async def test_create_state_nested(
+    async def test_create_state(
         self, client: AsyncClient, db_session: AsyncSession
     ):
-        """Test creating a new state under a country."""
+        """Test creating a new state."""
         # Arrange
         country = await create_country_async(db_session, name="Japan", code="JP")
-        payload = {"name": "Tokyo", "code": "JP-13"}
+        payload = {"country_id": country.id, "name": "Tokyo", "code": "JP-13"}
 
         # Act
-        response = await client.post(f"/countries/{country.id}/states", json=payload)
+        response = await client.post("/states/", json=payload)
 
         # Assert
         assert response.status_code == 201
@@ -40,16 +41,28 @@ class TestStateAPI:
         assert states[0].name == "Tokyo"
         assert states[0].code == "JP-13"
 
+        # Verify event log
+        event_result = await db_session.execute(select(EventLog))
+        event_logs = event_result.scalars().all()
+        assert len(event_logs) == 1
+        assert event_logs[0].event_type == "CREATE"
+        assert event_logs[0].entity_type == "state"
+        assert event_logs[0].entity_id == data["id"]
+        assert event_logs[0].request_method == "POST"
+        assert event_logs[0].request_path == "/states/"
+        assert event_logs[0].ip_address is not None
+        assert event_logs[0].processing_status == "completed"
+
     async def test_create_state_country_not_found(self, client: AsyncClient):
-        """Test creating a state for non-existent country."""
+        """Test creating a state with non-existent country."""
         # Arrange
-        payload = {"name": "Tokyo", "code": "JP-13"}
+        payload = {"country_id": 999, "name": "Tokyo", "code": "JP-13"}
 
         # Act
-        response = await client.post("/countries/999/states", json=payload)
+        response = await client.post("/states/", json=payload)
 
         # Assert
-        assert response.status_code == 404
+        assert response.status_code == 400  # Foreign key constraint violation
 
     async def test_get_state(self, client: AsyncClient, db_session: AsyncSession):
         """Test retrieving a state by ID."""
@@ -215,6 +228,18 @@ class TestStateAPI:
         await db_session.refresh(state)
         assert state.name == "Tokyo"
 
+        # Verify event log
+        event_result = await db_session.execute(select(EventLog))
+        event_logs = event_result.scalars().all()
+        assert len(event_logs) == 1
+        assert event_logs[0].event_type == "UPDATE"
+        assert event_logs[0].entity_type == "state"
+        assert event_logs[0].entity_id == state.id
+        assert event_logs[0].request_method == "PUT"
+        assert event_logs[0].request_path == f"/states/{state.id}"
+        assert event_logs[0].ip_address is not None
+        assert event_logs[0].processing_status == "completed"
+
     async def test_update_state_not_found(self, client: AsyncClient):
         """Test updating a non-existent state."""
         # Act
@@ -245,6 +270,18 @@ class TestStateAPI:
         states = result.scalars().all()
         assert len(states) == 0
 
+        # Verify event log
+        event_result = await db_session.execute(select(EventLog))
+        event_logs = event_result.scalars().all()
+        assert len(event_logs) == 1
+        assert event_logs[0].event_type == "DELETE"
+        assert event_logs[0].entity_type == "state"
+        assert event_logs[0].entity_id == state.id
+        assert event_logs[0].request_method == "DELETE"
+        assert event_logs[0].request_path == f"/states/{state.id}"
+        assert event_logs[0].ip_address is not None
+        assert event_logs[0].processing_status == "completed"
+
     async def test_delete_state_not_found(self, client: AsyncClient):
         """Test deleting a non-existent state."""
         # Act
@@ -259,8 +296,8 @@ class TestStateAPI:
         country = await create_country_async(db_session, name="Japan", code="JP")
 
         # Act
-        payload = {"name": "Tokyo", "code": "INVALID"}
-        response = await client.post(f"/countries/{country.id}/states", json=payload)
+        payload = {"country_id": country.id, "name": "Tokyo", "code": "INVALID"}
+        response = await client.post("/states/", json=payload)
 
         # Assert
         assert response.status_code == 422  # Validation error
@@ -276,8 +313,8 @@ class TestStateAPI:
         )
 
         # Act
-        payload = {"name": "Another Tokyo", "code": "JP-13"}
-        response = await client.post(f"/countries/{country.id}/states", json=payload)
+        payload = {"country_id": country.id, "name": "Another Tokyo", "code": "JP-13"}
+        response = await client.post("/states/", json=payload)
 
         # Assert
         assert response.status_code == 400  # Database integrity error
