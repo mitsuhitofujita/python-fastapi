@@ -71,7 +71,7 @@ async def create_state(
         raise
 
 
-async def get_state(db: AsyncSession, state_id: int) -> State | None:
+async def get_state(db: AsyncSession, state_id: int) -> State:
     """
     Get a state/province
 
@@ -80,10 +80,18 @@ async def get_state(db: AsyncSession, state_id: int) -> State | None:
         state_id: State ID
 
     Returns:
-        State (None if not found)
+        State
+
+    Raises:
+        EntityNotFoundError: If state not found
     """
     result = await db.execute(select(State).where(State.id == state_id))
-    return result.scalar_one_or_none()
+    state = result.scalar_one_or_none()
+    if state is None:
+        from domain.exceptions import EntityNotFoundError
+
+        raise EntityNotFoundError("State", state_id)
+    return state
 
 
 async def get_states(
@@ -115,7 +123,7 @@ async def update_state(
     state_id: int,
     state_data: StateUpdateRequest,
     request_info: RequestInfo,
-) -> State | None:
+) -> State:
     """
     Update a state/province and record event log (Transactional Outbox pattern)
 
@@ -126,10 +134,10 @@ async def update_state(
         request_info: Request information
 
     Returns:
-        Updated state (None if not found)
+        Updated state
 
     Raises:
-        EntityNotFoundError: If country doesn't exist
+        EntityNotFoundError: If state or country doesn't exist
         DuplicateCodeError: If code already exists
         IntegrityError: If an unexpected database error occurs
     """
@@ -138,7 +146,9 @@ async def update_state(
     state = result.scalar_one_or_none()
 
     if state is None:
-        return None
+        from domain.exceptions import EntityNotFoundError
+
+        raise EntityNotFoundError("State", state_id)
 
     # Domain validation: check country exists if being changed
     if state_data.country_id is not None and state_data.country_id != state.country_id:
@@ -185,7 +195,7 @@ async def update_state(
 
 async def delete_state(
     db: AsyncSession, state_id: int, request_info: RequestInfo
-) -> State | None:
+) -> State:
     """
     Delete a state/province and record event log (Transactional Outbox pattern)
 
@@ -195,14 +205,19 @@ async def delete_state(
         request_info: Request information
 
     Returns:
-        Deleted state (None if not found)
+        Deleted state
+
+    Raises:
+        EntityNotFoundError: If state not found
     """
     # Get target state
     result = await db.execute(select(State).where(State.id == state_id))
     state = result.scalar_one_or_none()
 
     if state is None:
-        return None
+        from domain.exceptions import EntityNotFoundError
+
+        raise EntityNotFoundError("State", state_id)
 
     # 1. Record event log (before deletion to capture ID)
     event_log = EventLog(

@@ -2,14 +2,12 @@
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.country import RequestInfo
 from crud.state import create_state, delete_state, get_state, get_states, update_state
 from database import get_db
-from domain.exceptions import DuplicateCodeError, EntityNotFoundError
 from schemas.state import (
     StateCreateRequest,
     StateCreateResponse,
@@ -50,25 +48,8 @@ async def create_state_endpoint(
         status_code=201,
     )
 
-    try:
-        created_state = await create_state(db, state, request_info)
-        return created_state
-    except EntityNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=e.message,
-        ) from e
-    except DuplicateCodeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=e.message,
-        ) from e
-    except IntegrityError as e:
-        # Unexpected database error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred",
-        ) from e
+    created_state = await create_state(db, state, request_info)
+    return created_state
 
 
 @router.get(
@@ -87,11 +68,6 @@ async def read_state(
     - **state_id**: State/province ID
     """
     state = await get_state(db, state_id)
-    if state is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"State with id {state_id} not found",
-        )
     return state
 
 
@@ -146,30 +122,8 @@ async def update_state_endpoint(
         status_code=200,
     )
 
-    try:
-        updated_state = await update_state(db, state_id, state, request_info)
-        if updated_state is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"State with id {state_id} not found",
-            )
-        return updated_state
-    except EntityNotFoundError as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=e.message,
-        ) from e
-    except DuplicateCodeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=e.message,
-        ) from e
-    except IntegrityError as e:
-        # Unexpected database error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred",
-        ) from e
+    updated_state = await update_state(db, state_id, state, request_info)
+    return updated_state
 
 
 @router.delete(
@@ -196,9 +150,4 @@ async def delete_state_endpoint(
     )
 
     deleted_state = await delete_state(db, state_id, request_info)
-    if deleted_state is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"State with id {state_id} not found",
-        )
     return deleted_state

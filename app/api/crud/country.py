@@ -81,7 +81,7 @@ async def create_country(
         raise
 
 
-async def get_country(db: AsyncSession, country_id: int) -> Country | None:
+async def get_country(db: AsyncSession, country_id: int) -> Country:
     """
     Get a country
 
@@ -90,10 +90,18 @@ async def get_country(db: AsyncSession, country_id: int) -> Country | None:
         country_id: Country ID
 
     Returns:
-        Country (None if not found)
+        Country
+
+    Raises:
+        EntityNotFoundError: If country not found
     """
     result = await db.execute(select(Country).where(Country.id == country_id))
-    return result.scalar_one_or_none()
+    country = result.scalar_one_or_none()
+    if country is None:
+        from domain.exceptions import EntityNotFoundError
+
+        raise EntityNotFoundError("Country", country_id)
+    return country
 
 
 async def get_countries(
@@ -119,7 +127,7 @@ async def update_country(
     country_id: int,
     country_data: CountryUpdateRequest,
     request_info: RequestInfo,
-) -> Country | None:
+) -> Country:
     """
     Update a country and record an event log (Transactional Outbox pattern)
 
@@ -130,9 +138,10 @@ async def update_country(
         request_info: Request information
 
     Returns:
-        Updated country (None if not found)
+        Updated country
 
     Raises:
+        EntityNotFoundError: If country not found
         DuplicateCodeError: If country code already exists
         IntegrityError: If an unexpected database error occurs
     """
@@ -141,7 +150,9 @@ async def update_country(
     country = result.scalar_one_or_none()
 
     if country is None:
-        return None
+        from domain.exceptions import EntityNotFoundError
+
+        raise EntityNotFoundError("Country", country_id)
 
     # Domain validation: check code uniqueness if code is being changed
     if country_data.code is not None and country_data.code != country.code:
@@ -182,7 +193,7 @@ async def update_country(
 
 async def delete_country(
     db: AsyncSession, country_id: int, request_info: RequestInfo
-) -> Country | None:
+) -> Country:
     """
     Delete a country and record an event log (Transactional Outbox pattern)
 
@@ -192,14 +203,29 @@ async def delete_country(
         request_info: Request information
 
     Returns:
-        Deleted country (None if not found)
+        Deleted country
+
+    Raises:
+        EntityNotFoundError: If country not found
+        RelatedEntityExistsError: If country has related states
     """
     # Get target country
     result = await db.execute(select(Country).where(Country.id == country_id))
     country = result.scalar_one_or_none()
 
     if country is None:
-        return None
+        from domain.exceptions import EntityNotFoundError
+
+        raise EntityNotFoundError("Country", country_id)
+
+    # Check for related states (foreign key constraint validation)
+    from models.state import State
+
+    states_result = await db.execute(select(State).where(State.country_id == country_id).limit(1))
+    if states_result.scalar_one_or_none() is not None:
+        from domain.exceptions import RelatedEntityExistsError
+
+        raise RelatedEntityExistsError("Country", country_id, "states")
 
     # 1. Record event log (before deletion to record ID)
     event_log = EventLog(

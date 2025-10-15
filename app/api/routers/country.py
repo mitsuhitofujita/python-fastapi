@@ -2,8 +2,7 @@
 
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.country import (
@@ -16,7 +15,6 @@ from crud.country import (
 )
 from crud.state import get_states
 from database import get_db
-from domain.exceptions import DuplicateCodeError
 from schemas.country import (
     CountryCreateRequest,
     CountryCreateResponse,
@@ -57,20 +55,8 @@ async def create_country_endpoint(
         status_code=201,
     )
 
-    try:
-        created_country = await create_country(db, country, request_info)
-        return created_country
-    except DuplicateCodeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=e.message,
-        ) from e
-    except IntegrityError as e:
-        # Unexpected database error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred",
-        ) from e
+    created_country = await create_country(db, country, request_info)
+    return created_country
 
 
 @router.get(
@@ -89,11 +75,6 @@ async def read_country(
     - **country_id**: Country ID
     """
     country = await get_country(db, country_id)
-    if country is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Country with id {country_id} not found",
-        )
     return country
 
 
@@ -145,25 +126,8 @@ async def update_country_endpoint(
         status_code=200,
     )
 
-    try:
-        updated_country = await update_country(db, country_id, country, request_info)
-        if updated_country is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Country with id {country_id} not found",
-            )
-        return updated_country
-    except DuplicateCodeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=e.message,
-        ) from e
-    except IntegrityError as e:
-        # Unexpected database error
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred",
-        ) from e
+    updated_country = await update_country(db, country_id, country, request_info)
+    return updated_country
 
 
 @router.delete(
@@ -189,19 +153,8 @@ async def delete_country_endpoint(
         status_code=200,
     )
 
-    try:
-        deleted_country = await delete_country(db, country_id, request_info)
-        if deleted_country is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Country with id {country_id} not found",
-            )
-        return deleted_country
-    except IntegrityError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete country with existing states",
-        ) from e
+    deleted_country = await delete_country(db, country_id, request_info)
+    return deleted_country
 
 
 @router.get(
@@ -223,13 +176,8 @@ async def read_country_states(
     - **skip**: Number of records to skip (default: 0)
     - **limit**: Maximum number of records to retrieve (default: 100)
     """
-    # Verify country exists
-    country = await get_country(db, country_id)
-    if country is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Country with id {country_id} not found",
-        )
+    # Verify country exists (will raise EntityNotFoundError if not found)
+    await get_country(db, country_id)
 
     states = await get_states(db, skip=skip, limit=limit, country_id=country_id)
     return states
