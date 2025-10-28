@@ -1,11 +1,9 @@
-import os
-
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-# 環境変数からデータベースURLを取得
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/app_local"
-)
+from config import settings
+
+# Get database URL from settings
+DATABASE_URL = settings.database_url
 
 # 同期URLを非同期URLに変換 (postgresql:// -> postgresql+asyncpg://)
 if DATABASE_URL.startswith("postgresql://"):
@@ -14,7 +12,7 @@ if DATABASE_URL.startswith("postgresql://"):
 # 非同期エンジンの作成
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,  # SQLログを出力 (開発時のみ)
+    echo=settings.sqlalchemy_echo,
     future=True,
 )
 

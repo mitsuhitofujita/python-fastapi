@@ -1,6 +1,5 @@
 """Pytest configuration and shared fixtures."""
 
-import os
 from collections.abc import AsyncGenerator
 
 import pytest_asyncio
@@ -12,6 +11,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from config import settings
 from main import app
 from models import Base
 
@@ -19,10 +19,7 @@ from models import Base
 @pytest_asyncio.fixture(scope="function")
 async def test_engine() -> AsyncGenerator[AsyncEngine, None]:
     """Create a test database engine for each test."""
-    db_url = os.getenv(
-        "DATABASE_URL_TEST",
-        "postgresql://app_test:app_test@postgres:5432/app_test",
-    )
+    db_url = settings.database_url_test
     # Convert to asyncpg URL
     if db_url.startswith("postgresql://"):
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)

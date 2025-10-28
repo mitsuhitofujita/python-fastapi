@@ -14,14 +14,12 @@ from urllib.parse import urlparse
 
 import psycopg2
 
+from config import settings
+
 
 def get_test_database_url():
-    """Get test database URL from environment."""
-    database_url = os.getenv("DATABASE_URL_TEST")
-    if not database_url:
-        print("❌ ERROR: DATABASE_URL_TEST environment variable is not set")
-        sys.exit(1)
-    return database_url
+    """Get test database URL from settings."""
+    return settings.database_url_test
 
 
 def drop_all_tables(database_url):

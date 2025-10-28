@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 """Database connection check script."""
 
-import os
 import sys
 from urllib.parse import urlparse
 
 import psycopg2
 
+from config import settings
+
 
 def check_database_connection():
-    """Check if database connection is successful using DATABASE_URL."""
-    database_url = os.getenv("DATABASE_URL")
-
-    if not database_url:
-        print("❌ ERROR: DATABASE_URL environment variable is not set")
-        return False
+    """Check if database connection is successful using settings."""
+    database_url = settings.database_url
 
     print(f"📌 DATABASE_URL: {database_url}")
     print("🔄 Attempting to connect to database...")

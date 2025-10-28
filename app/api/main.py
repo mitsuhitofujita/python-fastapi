@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
+from config import settings
 from domain.exceptions import (
     DomainValidationError,
     DuplicateCodeError,
@@ -15,7 +16,7 @@ from routers.utils import get_client_ip
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=settings.log_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)

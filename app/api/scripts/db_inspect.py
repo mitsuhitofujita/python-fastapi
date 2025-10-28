@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 """Database inspection script for development."""
 
-import os
-
 from sqlalchemy import create_engine, inspect, text
+
+from config import settings
 
 
 def main():
     """Inspect database schema and data."""
-    database_url = os.getenv("DATABASE_URL")
-    if not database_url:
-        print("Error: DATABASE_URL environment variable is not set")
-        return
+    database_url = settings.database_url
 
     engine = create_engine(database_url)
     inspector = inspect(engine)
