@@ -40,6 +40,14 @@ dev:
 migrate:
     cd app/api && uv run alembic upgrade head
 
+# Rollback all migrations to base (empty database)
+migrate-reset:
+    cd app/api && uv run alembic downgrade base
+
+# Downgrade migration by one step
+migrate-down:
+    cd app/api && uv run alembic downgrade -1
+
 # Create new Alembic migration with auto-detection
 migration-create MESSAGE:
     cd app/api && uv run alembic revision --autogenerate -m "{{MESSAGE}}"
