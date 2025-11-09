@@ -7,6 +7,12 @@ from alembic import context
 from config import settings
 from models import Base
 
+# Import all models to register them with SQLAlchemy metadata
+from models.city import City  # noqa: F401
+from models.country import Country  # noqa: F401
+from models.event_log import EventLog  # noqa: F401
+from models.state import State  # noqa: F401
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

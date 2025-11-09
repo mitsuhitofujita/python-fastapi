@@ -80,9 +80,7 @@ async def related_entity_exists_error_handler(
 
 
 @app.exception_handler(DomainValidationError)
-async def domain_validation_error_handler(
-    request: Request, exc: DomainValidationError
-):
+async def domain_validation_error_handler(request: Request, exc: DomainValidationError):
     """Handle other domain validation errors (400 Bad Request)"""
     logger.debug(
         "DomainValidationError: %s | Path: %s | Method: %s | IP: %s",

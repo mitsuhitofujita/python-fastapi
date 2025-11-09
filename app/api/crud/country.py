@@ -221,7 +221,9 @@ async def delete_country(
     # Check for related states (foreign key constraint validation)
     from models.state import State
 
-    states_result = await db.execute(select(State).where(State.country_id == country_id).limit(1))
+    states_result = await db.execute(
+        select(State).where(State.country_id == country_id).limit(1)
+    )
     if states_result.scalar_one_or_none() is not None:
         from domain.exceptions import RelatedEntityExistsError
 

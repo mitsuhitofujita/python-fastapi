@@ -21,7 +21,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # SQLAlchemy settings
-    sqlalchemy_echo: bool = False  # SQL logging (True for development, False for production)
+    sqlalchemy_echo: bool = (
+        False  # SQL logging (True for development, False for production)
+    )
 
 
 # Global settings instance
