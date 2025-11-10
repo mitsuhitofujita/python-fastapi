@@ -11,7 +11,7 @@ from domain.exceptions import (
     EntityNotFoundError,
     RelatedEntityExistsError,
 )
-from routers import country, state
+from routers import city, country, state
 from routers.utils import get_client_ip
 
 # Configure logging
@@ -132,6 +132,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Register routers
 app.include_router(country.router)
 app.include_router(state.router)
+app.include_router(city.router)
 
 
 @app.get("/")

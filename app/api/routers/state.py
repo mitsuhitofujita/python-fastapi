@@ -2,12 +2,14 @@
 
 import json
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from crud.city import list_cities_by_state
 from crud.country import RequestInfo
 from crud.state import create_state, delete_state, get_state, get_states, update_state
 from database import get_db
+from schemas.city import CityResponse
 from schemas.state import (
     StateCreateRequest,
     StateCreateResponse,
@@ -151,3 +153,34 @@ async def delete_state_endpoint(
 
     deleted_state = await delete_state(db, state_id, request_info)
     return deleted_state
+
+
+@router.get(
+    "/{state_id}/cities",
+    response_model=list[CityResponse],
+    summary="Get cities for a specific state",
+    description="Get list of cities for a specific state/province (with pagination and active status filtering)",
+)
+async def read_cities_by_state(
+    state_id: int,
+    skip: int = Query(default=0, ge=0, description="Number of records to skip"),
+    limit: int = Query(
+        default=100, ge=1, le=1000, description="Maximum number of records to retrieve"
+    ),
+    include_inactive: bool = Query(
+        default=False, description="Include inactive cities in results"
+    ),
+    db: AsyncSession = Depends(get_db),  # noqa: B008 - FastAPI dependency injection pattern
+):
+    """
+    Get list of cities for a specific state/province
+
+    - **state_id**: State/province ID
+    - **skip**: Number of records to skip (default: 0)
+    - **limit**: Maximum number of records to retrieve (default: 100, max: 1000)
+    - **include_inactive**: Include inactive cities (default: False)
+    """
+    cities = await list_cities_by_state(
+        db, state_id, skip=skip, limit=limit, include_inactive=include_inactive
+    )
+    return cities
